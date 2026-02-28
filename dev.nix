@@ -9,6 +9,7 @@
     pkgs.sudo
     pkgs.apt
     pkgs.docker
+    pkgs.cloudflared
   ];
   # Sets environment variables in the workspace
   env = {};
