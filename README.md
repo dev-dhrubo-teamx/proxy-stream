@@ -42,32 +42,42 @@ app.get("/proxy", async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send("Missing url");
 
+  // 🔑 forward Range header
+  const headers = {
+    "User-Agent": "Mozilla/5.0",
+  };
+
+  if (req.headers.range) {
+    headers.Range = req.headers.range;
+  }
+
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
+    const response = await fetch(url, { headers });
+
+    // 🔑 forward status (200 / 206)
+    res.status(response.status);
+
+    // 🔑 forward important headers
+    [
+      "content-type",
+      "content-length",
+      "content-range",
+      "accept-ranges",
+    ].forEach(h => {
+      const v = response.headers.get(h);
+      if (v) res.setHeader(h, v);
     });
 
-    if (!response.ok) {
-      return res.status(response.status).send("Upstream error");
-    }
-
-    // content-type forward
-    const ct = response.headers.get("content-type");
-    if (ct) res.setHeader("Content-Type", ct);
-
-    // 🔑 WebStream → Node Stream
-    const nodeStream = Readable.fromWeb(response.body);
-    nodeStream.pipe(res);
+    // stream body
+    Readable.fromWeb(response.body).pipe(res);
 
   } catch (err) {
-    res.status(500).send("Proxy error: " + err.message);
+    res.status(500).send(err.message);
   }
 });
 
 app.listen(3000, () => {
-  console.log("Proxy running on http://localhost:3000");
+  console.log("🚀 Proxy with Range support running on http://localhost:3000");
 });
 ```
 Step 4 
